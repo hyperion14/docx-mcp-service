@@ -1,0 +1,56 @@
+services:
+  docx-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: docx-generator
+    ports:
+      - "5000:5000"
+    volumes:
+      - docx_files:/app/docx_files
+      - archive:/app/archive
+      - ./templates:/app/templates:ro
+    environment:
+      - DOCKER_API_KEY=${DOCKER_API_KEY:-YOUR_API_KEY}
+      - DOCKER_IP=${DOCKER_IP:-http://mcp.eunomialegal.de}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - MISTRAL_AGENT_ID=${MISTRAL_AGENT_ID}
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - docx-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    container_name: mcp-docx-server
+    ports:
+      - "7860:7860"
+    environment:
+      - DOCKER_IP=http://docx-generator:5000
+      - DOCKER_API_KEY=${DOCKER_API_KEY}
+    env_file:
+      - .env
+    depends_on:
+      - docx-generator
+    restart: unless-stopped
+    networks:
+      - docx-network
+
+volumes:
+  docx_files:
+    driver: local
+  archive:
+    driver: local
+
+networks:
+  docx-network:
+    driver: bridge

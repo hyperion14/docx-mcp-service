@@ -1,0 +1,10 @@
+flask
+flask-cors
+python-docx
+python-dotenv
+requests
+pyngrok
+
+# MCP Server dependencies
+fastmcp>=2.13.0
+mcp>=1.22.0

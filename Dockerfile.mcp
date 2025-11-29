@@ -1,0 +1,27 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install curl for healthcheck
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies for MCP server
+RUN pip install --no-cache-dir \
+    fastmcp \
+    requests \
+    python-dotenv
+
+# Copy MCP server and environment
+COPY mcp_server.py .
+COPY .env .
+
+# Expose port for SSE/MCP
+EXPOSE 7860
+
+# Health check - NOTE: MCP protocol doesn't have a REST /health endpoint
+# We check if the process is running instead
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD pgrep -f "python.*mcp_server.py" > /dev/null || exit 1
+
+# Run MCP server with SSE transport (Mistral spec-compliant)
+CMD ["python3", "mcp_server.py"]
