@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # DOCX Generator Service
+  docx-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: docx-generator
+    ports:
+      - "5000:5000"
+    volumes:
+      - docx_files:/app/docx_files
+      - archive:/app/archive
+      - ./templates:/app/templates:ro
+    environment:
+      - DOCKER_API_KEY=${DOCKER_API_KEY}
+      - DOCKER_IP=${DOCKER_IP}
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - docx-network
+
+  # MCP Server (für chat.mistral.ai)
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    container_name: mcp-docx-server
+    ports:
+      - "7860:7860"
+    environment:
+      - DOCKER_IP=http://mcp.eunomialegal.de
+      - DOCKER_API_KEY=${DOCKER_API_KEY}
+    env_file:
+      - .env
+    depends_on:
+      - docx-generator
+    restart: unless-stopped
+    networks:
+      - docx-network
+
+volumes:
+  docx_files:
+    driver: local
+  archive:
+    driver: local
+
+networks:
+  docx-network:
+    driver: bridge
