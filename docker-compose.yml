@@ -32,11 +32,19 @@ services:
       context: .
       dockerfile: Dockerfile.mcp
     container_name: mcp-docx-server
+    stdin_open: true
+    tty: true
     ports:
       - "7860:7860"
+    volumes:
+      - docx_files:/app/docx_files
+      - archive:/app/archive
+      - ./templates:/app/templates:ro
     environment:
       - DOCKER_IP=http://docx-generator:5000
       - DOCKER_API_KEY=${DOCKER_API_KEY}
+      - PUBLIC_URL=${PUBLIC_URL:-https://mcp.eunomialegal.de}
+      - TEMPLATE_PATH=/app/templates/bhk-base.docx
     env_file:
       - .env
     depends_on:
@@ -44,6 +52,12 @@ services:
     restart: unless-stopped
     networks:
       - docx-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 volumes:
   docx_files:

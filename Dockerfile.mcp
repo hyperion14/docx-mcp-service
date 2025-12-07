@@ -2,26 +2,30 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install curl for healthcheck
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# Install curl and procps for healthcheck
+RUN apt-get update && apt-get install -y curl procps && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies for MCP server
 RUN pip install --no-cache-dir \
-    fastmcp \
+    fastmcp>=2.13.0 \
+    mcp>=1.22.0 \
+    uvicorn \
     requests \
-    python-dotenv
+    python-dotenv \
+    python-docx \
+    mistune>=3.0.0
 
-# Copy MCP server and environment
-COPY mcp_server.py .
-COPY .env .
+# Copy MCP server and dependencies
+COPY mcp_server_v2.py ./mcp_server_v2.py
+COPY docx_logic.py ./docx_logic.py
+COPY bhk_formatter.py ./bhk_formatter.py
 
-# Expose port for SSE/MCP
+# Expose port for SSE HTTP access
 EXPOSE 7860
 
-# Health check - NOTE: MCP protocol doesn't have a REST /health endpoint
-# We check if the process is running instead
+# Health check - Check if HTTP endpoint is reachable
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD pgrep -f "python.*mcp_server.py" > /dev/null || exit 1
+    CMD curl -f http://localhost:7860/health || exit 1
 
-# Run MCP server with SSE transport (Mistral spec-compliant)
-CMD ["python3", "mcp_server.py"]
+# Run MCP server with SSE transport (Mistral Chat compatible)
+CMD ["python3", "mcp_server_v2.py"]

@@ -15,6 +15,9 @@ import logging
 from dotenv import load_dotenv
 import shutil
 
+# Import docx_logic functions
+from docx_logic import generate_docx_from_text, archive_files_after_delay
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -75,14 +78,16 @@ def generate_docx():
     Expected JSON payload:
     {
         "text": "Text content to convert to DOCX",
-        "filename": "optional_custom_name" (optional)
+        "filename": "optional_custom_name" (optional),
+        "format_mode": "bhk" or "plain" (optional, default: "bhk")
     }
 
     Returns:
     {
         "download_url": "http://[PUBLIC_URL]/download/[filename]",
         "filename": "generated_filename.docx",
-        "expires_at": "timestamp"
+        "expires_at": "timestamp",
+        "format_mode": "bhk" or "plain"
     }
     """
     # Authentication
@@ -96,52 +101,28 @@ def generate_docx():
     data = request.json
     text = data.get('text', '')
     custom_filename = data.get('filename', None)
+    format_mode = data.get('format_mode', 'bhk')  # Default to BHK format
 
     if not text:
         return jsonify({"error": "No text provided"}), 400
 
+    # Validate format_mode
+    if format_mode not in ['bhk', 'plain']:
+        return jsonify({"error": "Invalid format_mode. Must be 'bhk' or 'plain'"}), 400
+
     try:
-        # Generate unique filename with timestamp
-        timestamp = datetime.now().strftime("%y%m%d_%H%M")
+        # Use docx_logic function for generation
+        use_bhk_format = (format_mode == 'bhk')
+        
+        filename, txt_filename = generate_docx_from_text(
+            text=text,
+            output_folder=UPLOAD_FOLDER,
+            template_path=TEMPLATE_PATH,
+            custom_filename=custom_filename,
+            use_bhk_format=use_bhk_format
+        )
 
-        if custom_filename:
-            # Clean custom filename
-            custom_filename = custom_filename.replace('.docx', '')
-            filename = f"{timestamp}_{custom_filename}.docx"
-        else:
-            filename = f"{timestamp}_diktat_{uuid.uuid4().hex[:8]}.docx"
-
-        # Save source text for archival
-        txt_filename = filename.replace('.docx', '.txt')
-        txt_path = os.path.join(UPLOAD_FOLDER, txt_filename)
-
-        with open(txt_path, 'w', encoding='utf-8') as f:
-            f.write(text)
-
-        logger.info(f"Saved source text: {txt_filename}")
-
-        # Generate DOCX document
-        doc = Document()
-
-        # Add title if available (extract from first line if it looks like a title)
-        lines = text.split('\n')
-        if lines and len(lines[0]) < 100 and not lines[0].startswith(' '):
-            doc.add_heading(lines[0], level=1)
-            content_text = '\n'.join(lines[1:])
-        else:
-            content_text = text
-
-        # Add paragraphs (split by double newline for better formatting)
-        paragraphs = content_text.split('\n\n')
-        for para_text in paragraphs:
-            if para_text.strip():
-                doc.add_paragraph(para_text.strip())
-
-        # Save DOCX file
-        docx_path = os.path.join(UPLOAD_FOLDER, filename)
-        doc.save(docx_path)
-
-        logger.info(f"Generated DOCX: {filename}")
+        logger.info(f"Generated DOCX: {filename} (format: {format_mode})")
 
         # Generate download URL using PUBLIC_URL (for external access via subdomain)
         download_url = f"{PUBLIC_URL}/download/{filename}"
@@ -160,8 +141,9 @@ def generate_docx():
             "download_url": download_url,
             "filename": filename,
             "source_filename": txt_filename,
+            "format_mode": format_mode,
             "expires_at": datetime.fromtimestamp(expires_at).isoformat(),
-            "message": "DOCX generated successfully. Files will be archived after 24 hours."
+            "message": f"DOCX generated successfully in {format_mode.upper()} format. Files will be archived after 24 hours."
         }), 200
 
     except Exception as e:
@@ -196,44 +178,27 @@ def download_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename, as_attachment=True)
 
 
+# archive_files_after_delay is now imported from docx_logic
+# Kept here for backward compatibility with old function signature
 def archive_files_after_delay(docx_filename, txt_filename, delay):
     """
-    Archive source and generated files after delay period.
-
-    Creates daily subdirectories in format YYMMDD.
-    Moves both .txt and .docx files to archive.
-
+    Backward compatibility wrapper for archive_files_after_delay.
+    Calls the function from docx_logic with correct parameters.
+    
     Args:
         docx_filename: Name of the DOCX file
         txt_filename: Name of the source TXT file
         delay: Delay in seconds (default: 86400 = 24 hours)
     """
-    time.sleep(delay)
-
-    try:
-        # Create archive subdirectory for today
-        archive_date = datetime.now().strftime("%y%m%d")
-        daily_archive = os.path.join(ARCHIVE_FOLDER, archive_date)
-        os.makedirs(daily_archive, exist_ok=True)
-
-        # Move DOCX file
-        docx_src = os.path.join(UPLOAD_FOLDER, docx_filename)
-        docx_dst = os.path.join(daily_archive, docx_filename)
-
-        if os.path.exists(docx_src):
-            shutil.move(docx_src, docx_dst)
-            logger.info(f"Archived DOCX: {docx_filename} -> {daily_archive}")
-
-        # Move TXT file
-        txt_src = os.path.join(UPLOAD_FOLDER, txt_filename)
-        txt_dst = os.path.join(daily_archive, txt_filename)
-
-        if os.path.exists(txt_src):
-            shutil.move(txt_src, txt_dst)
-            logger.info(f"Archived TXT: {txt_filename} -> {daily_archive}")
-
-    except Exception as e:
-        logger.error(f"Error archiving files: {str(e)}", exc_info=True)
+    # Import and call the function from docx_logic
+    from docx_logic import archive_files_after_delay as archive_func
+    archive_func(
+        docx_filename=docx_filename,
+        txt_filename=txt_filename,
+        upload_folder=UPLOAD_FOLDER,
+        archive_folder=ARCHIVE_FOLDER,
+        delay=delay
+    )
 
 
 @app.route('/list_archives', methods=['GET'])
