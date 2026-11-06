@@ -51,7 +51,8 @@ aber aus dem Schnellformatvorlagen-Katalog entfernt.
 
 * Anschriftfeld ab 45 mm: Zusatz- und Vermerkzone (17,7 mm, Vorlage *Vermerk*, z. B. „per beA"),
   darunter Anschriftzone ab 62,7 mm (27,3 mm, max. 6 Zeilen).
-* Falzmarken 105 mm und 210 mm, Lochmarke 148,5 mm.
+* Falzmarken 105 mm und 210 mm, Lochmarke 148,5 mm – nur auf Seite 1 (dem Blatt, das gefaltet
+  und gelocht wird; Folgeseiten ohne Marken wie im bisherigen Briefkopf).
 * Grußformel mit 3 Leerzeilen Platz für die Unterschrift.
 * Informationsblock bleibt als Hausvariante unter dem Anschriftfeld (rechts steht die Partnerleiste).
 

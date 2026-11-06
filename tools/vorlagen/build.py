@@ -4,7 +4,6 @@ Aufruf: python3 build.py <original.docx> <ziel.docx> [<ziel.dotx>]
 """
 import copy
 import re
-import shutil
 import sys
 import tempfile
 import zipfile
@@ -39,6 +38,7 @@ NUMCOL = CM         # Nummernspalte 1 cm
 LINE = 'w:line="312" w:lineRule="auto"'   # 1,3-zeilig
 
 # --------------------------------------------------------- Listendefinitionen
+# Startwerte; main() verschiebt sie auf freie IDs des Ausgangsdokuments (choose_ids)
 ABS_GLIEDERUNG = 90
 ABS_RANDZAHL = 91
 ABS_BULLET = 92
@@ -49,6 +49,18 @@ NUM_RANDZAHL = 91
 NUM_BULLET = 92
 NUM_NUMMER = 93
 NUM_ANTRAG = 94
+
+
+def choose_ids(numbering):
+    """Neue Listen-IDs hinter die höchste vorhandene ID legen, damit nichts kollidiert."""
+    global ABS_GLIEDERUNG, ABS_RANDZAHL, ABS_BULLET, ABS_NUMMER, ABS_ANTRAG
+    global NUM_GLIEDERUNG, NUM_RANDZAHL, NUM_BULLET, NUM_NUMMER, NUM_ANTRAG
+    abs_ids = [int(a.get(q("w:abstractNumId"))) for a in numbering.findall("w:abstractNum", NS)]
+    num_ids = [int(n.get(q("w:numId"))) for n in numbering.findall("w:num", NS)]
+    a0 = max(abs_ids + [89]) + 1
+    n0 = max(num_ids + [89]) + 1
+    ABS_GLIEDERUNG, ABS_RANDZAHL, ABS_BULLET, ABS_NUMMER, ABS_ANTRAG = range(a0, a0 + 5)
+    NUM_GLIEDERUNG, NUM_RANDZAHL, NUM_BULLET, NUM_NUMMER, NUM_ANTRAG = range(n0, n0 + 5)
 
 
 def lvl(ilvl, fmt, text, left, hanging, pstyle=None, bold=None, font=None):
@@ -133,7 +145,10 @@ def prune_numbering(numbering, texts):
             numbering.remove(n)
             removed += 1
     used_abs = {n.find("w:abstractNumId", NS).get(q("w:val")) for n in numbering.findall("w:num", NS)}
-    # über numStyleLink/styleLink verbundene Definitionen behalten
+    # über numStyleLink/styleLink an Nummerierungsvorlagen gebundene Definitionen immer behalten
+    for a in numbering.findall("w:abstractNum", NS):
+        if a.find("w:numStyleLink", NS) is not None or a.find("w:styleLink", NS) is not None:
+            used_abs.add(a.get(q("w:abstractNumId")))
     for a in numbering.findall("w:abstractNum", NS):
         if a.get(q("w:abstractNumId")) not in used_abs:
             numbering.remove(a)
@@ -252,7 +267,7 @@ def build_styles(styles):
     # Grundeinstellung: Arial 11, Deutsch, 0 pt Abstand, einfach
     dd = styles.find("w:docDefaults", NS)
     dd.getparent().replace(dd, frag(
-        '<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Times New Roman" '
+        '<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" '
         'w:hAnsi="Arial" w:cs="Arial"/><w:sz w:val="22"/><w:szCs w:val="22"/>'
         '<w:lang w:val="de-DE" w:eastAsia="de-DE" w:bidi="ar-SA"/></w:rPr></w:rPrDefault>'
         '<w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>'
@@ -343,7 +358,8 @@ def build_document(doc):
     # Zeile 1 (Datum): zwei Leerabsätze vor dem Datum entfernen, Abstand fest
     row1 = rows[1]
     r1p = re.findall(r"<w:p[ >].*?</w:p>", row1, re.S)
-    date_p = r1p[-1].replace("<w:pPr>", '<w:pPr><w:spacing w:before="360"/>', 1)
+    nsdecl = " ".join(re.findall(r'xmlns(?::\w+)?="[^"]+"', re.search(r"<w:document[^>]*>", s).group(0)))
+    date_p = set_spacing_before(r1p[-1], 360, nsdecl)
     row1 = row1.replace("".join(r1p), date_p) if "".join(r1p) in row1 else row1
     new_tbl = tbl.replace(row0, rowA + rowB).replace(rows[1], row1)
     s = s.replace(tbl, new_tbl)
@@ -374,6 +390,41 @@ def build_document(doc):
     return head + "</w:tbl>" + body + tail
 
 
+# Reihenfolge der Kinder von w:pPr laut Schema (Auszug, ausreichend für diese Vorlage)
+PPR_ORDER = ["pStyle", "keepNext", "keepLines", "pageBreakBefore", "framePr", "widowControl", "numPr",
+             "suppressLineNumbers", "pBdr", "shd", "tabs", "suppressAutoHyphens", "kinsoku", "wordWrap",
+             "overflowPunct", "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd",
+             "snapToGrid", "spacing", "ind", "contextualSpacing", "mirrorIndents", "suppressOverlap", "jc",
+             "textDirection", "textAlignment", "textboxTightWrap", "outlineLvl", "divId", "cnfStyle", "rPr",
+             "sectPr", "pPrChange"]
+
+
+def set_spacing_before(p_xml, before, nsdecl):
+    """w:spacing/@w:before in einem Absatz setzen, in Schema-Reihenfolge.
+
+    nsdecl: Namespace-Deklarationen aus dem w:document-Starttag (für w14: usw.).
+    """
+    p = etree.fromstring("<wrap %s>%s</wrap>" % (nsdecl, p_xml))[0]
+    ppr = p.find("w:pPr", NS)
+    if ppr is None:
+        ppr = el("w:pPr")
+        p.insert(0, ppr)
+    sp = ppr.find("w:spacing", NS)
+    if sp is None:
+        sp = el("w:spacing")
+        pos = PPR_ORDER.index("spacing")
+        idx = 0
+        for i, child in enumerate(ppr):
+            name = etree.QName(child).localname
+            if name in PPR_ORDER and PPR_ORDER.index(name) < pos:
+                idx = i + 1
+        ppr.insert(idx, sp)
+    sp.set(q("w:before"), str(before))
+    out = etree.tostring(p, encoding="unicode")
+    # Namespace-Deklarationen stecken im Dokumentkopf; im Fragment wieder entfernen
+    return re.sub(r' xmlns(?::\w+)?="[^"]+"', "", out)
+
+
 LINE_ANCHOR_RE = re.compile(r'<w:r>(?:(?!<w:r>).)*?<wp:anchor[^>]*>(?:(?!</wp:anchor>).)*?'
                             r'<wp:posOffset>3780790</wp:posOffset>.*?</w:r>', re.S)
 
@@ -396,11 +447,16 @@ def add_marks(header):
 
 
 def main(src, dst_docx, dst_dotx=None):
-    tmp = Path(tempfile.mkdtemp())
+    with tempfile.TemporaryDirectory() as t:
+        _build(Path(t), src, dst_docx, dst_dotx)
+
+
+def _build(tmp, src, dst_docx, dst_dotx):
     with zipfile.ZipFile(src) as z:
         z.extractall(tmp)
     wd = tmp / "word"
     parser = etree.XMLParser(remove_blank_text=False)
+    choose_ids(etree.parse(str(wd / "numbering.xml"), parser).getroot())
 
     # Design-Schriftarten -> Arial
     th = wd / "theme" / "theme1.xml"
@@ -444,7 +500,6 @@ def main(src, dst_docx, dst_dotx=None):
     pack(dst_docx)
     if dst_dotx:
         pack(dst_dotx, template=True)
-    shutil.rmtree(tmp)
 
 
 if __name__ == "__main__":

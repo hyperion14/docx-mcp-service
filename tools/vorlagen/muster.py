@@ -2,7 +2,6 @@
 
 Aufruf: python3 muster.py <BHK_Briefkopf.docx> <ziel.docx>
 """
-import copy
 import sys
 
 from docx import Document
@@ -12,10 +11,27 @@ from lxml import etree
 W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 
 
-def restart(doc, para, num_style_id):
-    """Wie Word „Neu beginnen mit 1": neue Listeninstanz mit startOverride am ersten Absatz."""
+def set_numpr(para, ilvl=None, num_id=None):
+    """numPr direkt nach pStyle setzen (Schema-Reihenfolge)."""
+    ppr = para._p.get_or_add_pPr()
+    old = ppr.find(qn("w:numPr"))
+    if old is not None:
+        ppr.remove(old)
+    numpr = etree.Element(qn("w:numPr"))
+    if ilvl is not None:
+        etree.SubElement(numpr, qn("w:ilvl")).set(qn("w:val"), str(ilvl))
+    if num_id is not None:
+        etree.SubElement(numpr, qn("w:numId")).set(qn("w:val"), str(num_id))
+    ppr.find(qn("w:pStyle")).addnext(numpr)
+
+
+def new_restart_num(doc, num_style_id):
+    """Wie Word „Neu beginnen mit 1": neue Listeninstanz mit startOverride.
+
+    Word weist die neue Instanz dem Absatz und allen folgenden Absätzen derselben Liste zu;
+    main() macht das ebenso.
+    """
     numbering = doc.part.numbering_part.element
-    style = doc.styles[num_style_id] if False else None  # noqa: F841 (Lesbarkeit)
     st_el = [s for s in doc.styles.element.findall(qn("w:style")) if s.get(qn("w:styleId")) == num_style_id][0]
     num_id = st_el.find(qn("w:pPr")).find(qn("w:numPr")).find(qn("w:numId")).get(qn("w:val"))
     abs_id = [n for n in numbering.findall(qn("w:num")) if n.get(qn("w:numId")) == num_id][0] \
@@ -23,33 +39,21 @@ def restart(doc, para, num_style_id):
     new_id = max(int(n.get(qn("w:numId"))) for n in numbering.findall(qn("w:num"))) + 1
     num = etree.SubElement(numbering, qn("w:num"))
     num.set(qn("w:numId"), str(new_id))
-    a = etree.SubElement(num, qn("w:abstractNumId"))
-    a.set(qn("w:val"), abs_id)
+    etree.SubElement(num, qn("w:abstractNumId")).set(qn("w:val"), abs_id)
     ov = etree.SubElement(num, qn("w:lvlOverride"))
     ov.set(qn("w:ilvl"), "0")
-    so = etree.SubElement(ov, qn("w:startOverride"))
-    so.set(qn("w:val"), "1")
-    ppr = para._p.get_or_add_pPr()
-    numpr = etree.SubElement(ppr, qn("w:numPr"))
-    il = etree.SubElement(numpr, qn("w:ilvl"))
-    il.set(qn("w:val"), "0")
-    ni = etree.SubElement(numpr, qn("w:numId"))
-    ni.set(qn("w:val"), str(new_id))
-    # numPr muss direkt nach pStyle stehen
-    ps = ppr.find(qn("w:pStyle"))
-    ppr.remove(numpr)
-    ps.addnext(numpr)
+    etree.SubElement(ov, qn("w:startOverride")).set(qn("w:val"), "1")
+    return new_id
 
 
-def tab_level(para, ilvl):
-    """Wie Tab in einer Liste: Ebene tiefer, gleiche Liste."""
+def set_style_id(para, style_id):
+    """Absatzvorlage über die Style-ID setzen (Anzeigenamen können doppelt vorkommen)."""
     ppr = para._p.get_or_add_pPr()
-    numpr = etree.SubElement(ppr, qn("w:numPr"))
-    il = etree.SubElement(numpr, qn("w:ilvl"))
-    il.set(qn("w:val"), str(ilvl))
     ps = ppr.find(qn("w:pStyle"))
-    ppr.remove(numpr)
-    ps.addnext(numpr)
+    if ps is None:
+        ps = etree.Element(qn("w:pStyle"))
+        ppr.insert(0, ps)
+    ps.set(qn("w:val"), style_id)
 
 
 CONTENT = [
@@ -111,17 +115,17 @@ CONTENT = [
 def main(src, dst):
     doc = Document(src)
     ids = {s.get(qn("w:styleId")): s for s in doc.styles.element.findall(qn("w:style"))}
-    body = doc.element.body
     anchor = [p for p in doc.paragraphs if "{{text}}" in p.text][0]
     betreff = [p for p in doc.paragraphs if p.style.style_id == "Betreff"]
     # Betreff-Zeile füllen
     betreff[0].add_run(CONTENT[0][1])
     first = True
+    restarted = {}   # Style-ID -> numId nach „Neu beginnen mit 1"
     for sid, text in CONTENT[1:]:
         p = anchor.insert_paragraph_before()
         real = sid[:-2] if sid.endswith("+1") else sid.rstrip("!")
-        name = ids[real].find(qn("w:name")).get(qn("w:val"))
-        p.style = doc.styles[name]
+        assert real in ids, real
+        set_style_id(p, real)
         parts = text.split("\n")
         for i, part in enumerate(parts):
             r = p.add_run(part)
@@ -132,9 +136,10 @@ def main(src, dst):
             p.paragraph_format.space_before = anchor.paragraph_format.space_before
             first = False
         if sid.endswith("!"):
-            restart(doc, p, real)
-        if sid.endswith("+1"):
-            tab_level(p, 1)
+            restarted[real] = new_restart_num(doc, real)
+        level = 1 if sid.endswith("+1") else (0 if real in restarted else None)
+        if real in restarted or level:
+            set_numpr(p, ilvl=level, num_id=restarted.get(real))
     anchor._p.getparent().remove(anchor._p)
     doc.save(dst)
 
