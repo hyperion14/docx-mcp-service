@@ -1,8 +1,12 @@
 # BHK-Formatvorlagen – Kurzanleitung
 
-Eine Vorlage für Brief, Stellungnahme und Schriftsatz: `templates/BHK_Briefkopf.dotx`
-(dieselbe Vorlage als Dokument: `templates/BHK_Briefkopf.docx`, Beispiel aller Vorlagen:
-`templates/BHK_Muster_Formatvorlagen.docx`).
+Gilt für die Vorlagen der Version 2 in diesem Verzeichnis (`FREIBURG.dotx`) und für die Briefkopf-Vorlage
+des MCP-Dienstes (`templates/BHK_Briefkopf.dotx`). Ein Beispiel aller Formatvorlagen zeigt
+`Musterdokument_Formatvorlagen.docx`. Die Gründe für die Umstellung stehen in `BEGRUENDUNG.md`,
+Änderungsliste, Risiken und Testplan in `README.md`.
+
+> Lage und Aufbau von Anschriftfeld, Versandvermerk und Infoblock bestimmt in AnNoText der Textbaustein
+> „Adresse" (`Textbausteine-WIR/00000001.rtf`, Abrechnung: `00000000.rtf`), nicht die DOTX.
 
 ## Welche Vorlage wofür
 
@@ -75,6 +79,7 @@ Aufzählungen mit "-" oder "1)". Zitate mit ">".
 ## Vorlage neu erzeugen
 
 ```bash
+python3 tools/vorlagen/build.py tools/vorlagen/FREIBURG_original.dotx templates/FREIBURG.dotx
 python3 tools/vorlagen/build.py tools/vorlagen/BHK_Briefkopf_original.docx templates/BHK_Briefkopf.docx templates/BHK_Briefkopf.dotx
 python3 tools/vorlagen/muster.py templates/BHK_Briefkopf.docx templates/BHK_Muster_Formatvorlagen.docx
 ```

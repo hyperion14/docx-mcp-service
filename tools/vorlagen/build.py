@@ -306,6 +306,22 @@ def build_styles(styles):
             if rpr:
                 st.append(frag("<w:rPr>%s</w:rPr>" % rpr))
 
+    # Verknüpfte Zeichenvorlagen (w:link) müssen existieren – fehlende anlegen
+    for st in list(styles.findall("w:style", NS)):
+        if st.get(q("w:type")) != "paragraph":
+            continue
+        lk = st.find("w:link", NS)
+        if lk is None or lk.get(q("w:val")) in by_id:
+            continue
+        cid = lk.get(q("w:val"))
+        pname = st.find("w:name", NS).get(q("w:val"))
+        x = ('<w:style w:type="character" w:customStyle="1" w:styleId="%s"><w:name w:val="%s Zchn"/>'
+             '<w:basedOn w:val="Absatz-Standardschriftart"/><w:link w:val="%s"/><w:uiPriority w:val="99"/>'
+             '</w:style>' % (cid, pname, st.get(q("w:styleId"))))
+        ce = frag(x)
+        styles.append(ce)
+        by_id[cid] = ce
+
     # Altvorlagen bleiben, verschwinden aber aus der Schnellauswahl
     for sid in LEGACY:
         st = by_id.get(sid)
@@ -446,12 +462,24 @@ def add_marks(header):
     return header.replace(run, run + "".join(out), 1)
 
 
-def main(src, dst_docx, dst_dotx=None):
+def main(*args):
+    """build.py [--din-anschriftfeld] <quelle> <ziel.docx|ziel.dotx> [<ziel.dotx>]
+
+    --din-anschriftfeld (nur Blanko-Systemvorlagen): leere Kopfzeilenabsätze auf Seite 1 entfernen und
+    den oberen Rand auf 45 mm setzen, damit der AnNoText-Textbaustein „Adresse" exakt bei 45 mm
+    (Beginn Anschriftfeld DIN 5008 Form B) einsetzt. Gehört zum Textbaustein-Entwurf v2.
+    """
+    args = list(args)
+    din = "--din-anschriftfeld" in args
+    if din:
+        args.remove("--din-anschriftfeld")
+    src, dst_docx = args[0], args[1]
+    dst_dotx = args[2] if len(args) > 2 else None
     with tempfile.TemporaryDirectory() as t:
-        _build(Path(t), src, dst_docx, dst_dotx)
+        _build(Path(t), src, dst_docx, dst_dotx, din)
 
 
-def _build(tmp, src, dst_docx, dst_dotx):
+def _build(tmp, src, dst_docx, dst_dotx, din=False):
     with zipfile.ZipFile(src) as z:
         z.extractall(tmp)
     wd = tmp / "word"
@@ -469,12 +497,24 @@ def _build(tmp, src, dst_docx, dst_dotx):
     st.write(str(wd / "styles.xml"), xml_declaration=True, encoding="UTF-8", standalone=True)
 
     doc = (wd / "document.xml").read_text(encoding="utf-8")
-    doc = build_document(doc)
-    (wd / "document.xml").write_text(doc, encoding="utf-8")
+    # Blanko-Systemvorlage (z. B. FREIBURG.DOTX): Anschrift und Infoblock fügt erst AnNoText ein.
+    # Dann bleiben Textkörper und Kopfzeilenhöhe unverändert, damit die AnNoText-Blöcke an der
+    # gewohnten Stelle landen.
+    blanko = "<w:tbl>" not in doc
+    if not blanko:
+        doc = build_document(doc)
+        (wd / "document.xml").write_text(doc, encoding="utf-8")
+    if blanko and din:
+        doc = doc.replace('w:top="2665"', 'w:top="2552"', 1)
+        (wd / "document.xml").write_text(doc, encoding="utf-8")
+    print("Modus:", "Blanko-Systemvorlage" if blanko else "Briefkopf mit Anschriftfeld",
+          "+ DIN-Anschriftfeld" if (blanko and din) else "")
 
     h3 = (wd / "header3.xml").read_text(encoding="utf-8")
     # leere Kopfzeilenabsätze der ersten Seite schieben den Text unter 45 mm – entfernen
-    h3 = re.sub(r'<w:p [^>]*><w:pPr><w:pStyle w:val="Kopfzeile"/>(?:<w:spacing w:after="200"/>)?</w:pPr></w:p>', "", h3)
+    if not blanko or din:
+        h3 = re.sub(r'<w:p [^>]*><w:pPr><w:pStyle w:val="Kopfzeile"/>(?:<w:spacing w:after="200"/>)?</w:pPr></w:p>', "",
+                    h3)
     (wd / "header3.xml").write_text(add_marks(h3), encoding="utf-8")
 
     nb = etree.parse(str(wd / "numbering.xml"), parser)
@@ -497,7 +537,7 @@ def _build(tmp, src, dst_docx, dst_dotx):
                 if arc == "[Content_Types].xml":
                     continue
                 z.write(p, arc)
-    pack(dst_docx)
+    pack(dst_docx, template=str(dst_docx).lower().endswith(".dotx"))
     if dst_dotx:
         pack(dst_dotx, template=True)
 
