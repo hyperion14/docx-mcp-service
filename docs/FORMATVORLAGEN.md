@@ -1,5 +1,14 @@
 # BHK-Formatvorlagen – Kurzanleitung
 
+**Systemvorlage für AnNoText:** `templates/FREIBURG.dotx` – die leere Vorlage aus dem Kanzleisystem
+mit den neuen Formatvorlagen und Listen. Kopf-/Fußzeilen, Partnerleiste, Ränder und die Stelle, an der
+AnNoText Anschrift und Infoblock einsetzt, sind unverändert. Neu sind nur Formatvorlagen, Listen,
+Design-Schriftart Arial sowie zweite Falzmarke und Lochmarke auf Seite 1.
+
+> Lage und Aufbau von Anschriftfeld, Versandvermerk und Infoblock bestimmt das AnNoText-Adresslayout
+> (`.ADR`), nicht die DOTX. Die DIN-5008-Korrekturen am Anschriftfeld (siehe unten) müssen deshalb
+> im Adresslayout nachgezogen werden.
+
 Eine Vorlage für Brief, Stellungnahme und Schriftsatz: `templates/BHK_Briefkopf.dotx`
 (dieselbe Vorlage als Dokument: `templates/BHK_Briefkopf.docx`, Beispiel aller Vorlagen:
 `templates/BHK_Muster_Formatvorlagen.docx`).
@@ -75,6 +84,7 @@ Aufzählungen mit "-" oder "1)". Zitate mit ">".
 ## Vorlage neu erzeugen
 
 ```bash
+python3 tools/vorlagen/build.py tools/vorlagen/FREIBURG_original.dotx templates/FREIBURG.dotx
 python3 tools/vorlagen/build.py tools/vorlagen/BHK_Briefkopf_original.docx templates/BHK_Briefkopf.docx templates/BHK_Briefkopf.dotx
 python3 tools/vorlagen/muster.py templates/BHK_Briefkopf.docx templates/BHK_Muster_Formatvorlagen.docx
 ```
