@@ -115,8 +115,16 @@ CONTENT = [
 def main(src, dst):
     doc = Document(src)
     ids = {s.get(qn("w:styleId")): s for s in doc.styles.element.findall(qn("w:style"))}
-    anchor = [p for p in doc.paragraphs if "{{text}}" in p.text][0]
+    anchors = [p for p in doc.paragraphs if "{{text}}" in p.text]
     betreff = [p for p in doc.paragraphs if p.style.style_id == "Betreff"]
+    if anchors:
+        anchor = anchors[0]
+    else:
+        # Blanko-Vorlage: Muster ans Ende, mit Betreffzeile
+        anchor = doc.add_paragraph("{{text}}")
+        b = anchor.insert_paragraph_before()
+        set_style_id(b, "Betreff")
+        betreff = [b]
     # Betreff-Zeile füllen
     betreff[0].add_run(CONTENT[0][1])
     first = True
