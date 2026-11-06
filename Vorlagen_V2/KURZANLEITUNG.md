@@ -1,21 +1,12 @@
 # BHK-Formatvorlagen – Kurzanleitung
 
-**Systemvorlage für AnNoText:** `templates/FREIBURG.dotx` – die leere Vorlage aus dem Kanzleisystem
-mit den neuen Formatvorlagen und Listen. Kopf-/Fußzeilen, Partnerleiste, Ränder und die Stelle, an der
-AnNoText Anschrift und Infoblock einsetzt, sind unverändert. Neu sind nur Formatvorlagen, Listen,
-Design-Schriftart Arial sowie zweite Falzmarke und Lochmarke auf Seite 1.
+Gilt für die Vorlagen der Version 2 in diesem Verzeichnis (`FREIBURG.dotx`) und für die Briefkopf-Vorlage
+des MCP-Dienstes (`templates/BHK_Briefkopf.dotx`). Ein Beispiel aller Formatvorlagen zeigt
+`Musterdokument_Formatvorlagen.docx`. Die Gründe für die Umstellung stehen in `BEGRUENDUNG.md`,
+Änderungsliste, Risiken und Testplan in `README.md`.
 
-> **Entwurf v2 zur Freigabe:** `tools/vorlagen/Entwurf_v2/` enthält eine FREIBURG.dotx mit
-> DIN-Anschriftfeld und die passenden Textbausteine „Adresse" – nur nach Freigabe durch die Organisation
-> einspielen (siehe README dort).
->
-> Lage und Aufbau von Anschriftfeld, Versandvermerk und Infoblock bestimmt das AnNoText-Adresslayout
-> (`.ADR`), nicht die DOTX. Die DIN-5008-Korrekturen am Anschriftfeld (siehe unten) müssen deshalb
-> im Adresslayout nachgezogen werden.
-
-Eine Vorlage für Brief, Stellungnahme und Schriftsatz: `templates/BHK_Briefkopf.dotx`
-(dieselbe Vorlage als Dokument: `templates/BHK_Briefkopf.docx`, Beispiel aller Vorlagen:
-`templates/BHK_Muster_Formatvorlagen.docx`).
+> Lage und Aufbau von Anschriftfeld, Versandvermerk und Infoblock bestimmt in AnNoText der Textbaustein
+> „Adresse" (`Textbausteine-WIR/00000001.rtf`, Abrechnung: `00000000.rtf`), nicht die DOTX.
 
 ## Welche Vorlage wofür
 

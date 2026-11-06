@@ -1,4 +1,4 @@
-# Entwurf v2 – Briefvorlage FREIBURG und Textbausteine „Adresse"
+# Vorlagen V2 – Briefvorlage FREIBURG und Textbausteine „Adresse"
 
 **Status: Entwurf – nicht einspielen ohne Freigabe durch die Organisation.**
 Die Originale unter `tools/vorlagen/` (FREIBURG_original.dotx, `Textbausteine-WIR/`,
@@ -8,6 +8,9 @@ Die Originale unter `tools/vorlagen/` (FREIBURG_original.dotx, `Textbausteine-WI
 
 | Datei | Gegenüber Original |
 |---|---|
+| `BEGRUENDUNG.md` | warum die Vorlagen grundlegend geändert werden müssen (Entscheidungsgrundlage) |
+| `KURZANLEITUNG.md` | welche Formatvorlage wofür, Regeln für stabile Zählung, Prompt-Baustein für KI-Tools |
+| `Musterdokument_Formatvorlagen.docx` | alle Formatvorlagen und Prüffälle, erzeugt aus `FREIBURG.dotx` V2 |
 | `FREIBURG.dotx` | neue Formatvorlagen und Listen (wie `templates/FREIBURG.dotx`) **plus** Anschriftfeld-Anpassung: oberer Rand 45 mm statt 47 mm, vier leere Kopfzeilenabsätze auf Seite 1 entfernt |
 | `Textbausteine-WIR/00000000.rtf` (Adresse Abrechnung) | Anschriftfeld nach DIN 5008, Datum in den Informationsblock |
 | `Textbausteine-WIR/00000001.rtf` (Adresse allgemein) | wie 00000000 |
@@ -20,7 +23,7 @@ Die Originale unter `tools/vorlagen/` (FREIBURG_original.dotx, `Textbausteine-WI
 **FREIBURG.dotx**
 1. Formatvorlagen: Textkörper, Überschrift 1–7 (I. / 1. / a. / aa. / i. / (1) / (a)), Randzahl,
    Listenfortsetzung, Beweis, Antrag, Aufzählungszeichen, Listennummer; Arial als Design-Schriftart.
-   Altvorlagen (BHK_Standard1 usw.) bleiben erhalten. Details: `docs/FORMATVORLAGEN.md`.
+   Altvorlagen (BHK_Standard1 usw.) bleiben erhalten. Details: `KURZANLEITUNG.md`.
 2. Zweite Falzmarke (210 mm) und Lochmarke (148,5 mm) auf Seite 1.
 3. Textbeginn Seite 1 exakt bei 45 mm (Beginn Anschriftfeld DIN 5008 Form B). Bisher begann der Text
    wegen leerer Kopfzeilenabsätze erst bei ca. 55 mm.
@@ -57,11 +60,11 @@ Gemessen in einer Simulation (LibreOffice, Brief an das LG Freiburg):
 
 ## Test nach Freigabe (Testarbeitsplatz)
 
-1. Textbausteine aus `Entwurf_v2/Textbausteine-WIR` in einer Testumgebung importieren, FREIBURG.dotx v2
+1. Textbausteine aus `Vorlagen_V2/Textbausteine-WIR` in einer Testumgebung importieren, FREIBURG.dotx v2
    mit der Vorlage FREIBURG verknüpfen.
 2. Je einen Brief per Post, per beA und an ein Gericht erzeugen; Anschrift im Fensterumschlag (DL/C5/6)
    prüfen, Datum und Infoblock prüfen.
-3. Gliederung und Randzahl mit dem Musterdokument `templates/BHK_Muster_Formatvorlagen.docx` gegenprüfen
+3. Gliederung und Randzahl mit `Musterdokument_Formatvorlagen.docx` gegenprüfen
    (insbesondere Ebene „aa.").
 
 ## Rückfall
@@ -71,7 +74,9 @@ Originale aus `tools/vorlagen/` wieder einspielen (FREIBURG_original.dotx, `Text
 ## Neu erzeugen
 
 ```bash
-python3 tools/vorlagen/build.py --din-anschriftfeld tools/vorlagen/FREIBURG_original.dotx tools/vorlagen/Entwurf_v2/FREIBURG.dotx
-python3 tools/vorlagen/textbaustein_v2.py tools/vorlagen/Textbausteine-WIR/00000001.rtf tools/vorlagen/Entwurf_v2/Textbausteine-WIR/00000001.rtf
-python3 tools/vorlagen/textbaustein_v2.py tools/vorlagen/Textbausteine-WIR/00000000.rtf tools/vorlagen/Entwurf_v2/Textbausteine-WIR/00000000.rtf
+python3 tools/vorlagen/build.py --din-anschriftfeld tools/vorlagen/FREIBURG_original.dotx Vorlagen_V2/FREIBURG.dotx
+python3 tools/vorlagen/textbaustein_v2.py tools/vorlagen/Textbausteine-WIR/00000001.rtf Vorlagen_V2/Textbausteine-WIR/00000001.rtf
+python3 tools/vorlagen/textbaustein_v2.py tools/vorlagen/Textbausteine-WIR/00000000.rtf Vorlagen_V2/Textbausteine-WIR/00000000.rtf
+python3 tools/vorlagen/build.py --din-anschriftfeld tools/vorlagen/FREIBURG_original.dotx /tmp/v2basis.docx
+python3 tools/vorlagen/muster.py /tmp/v2basis.docx Vorlagen_V2/Musterdokument_Formatvorlagen.docx
 ```
