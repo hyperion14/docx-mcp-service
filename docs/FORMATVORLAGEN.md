@@ -5,6 +5,10 @@ mit den neuen Formatvorlagen und Listen. Kopf-/Fußzeilen, Partnerleiste, Rände
 AnNoText Anschrift und Infoblock einsetzt, sind unverändert. Neu sind nur Formatvorlagen, Listen,
 Design-Schriftart Arial sowie zweite Falzmarke und Lochmarke auf Seite 1.
 
+> **Entwurf v2 zur Freigabe:** `tools/vorlagen/Entwurf_v2/` enthält eine FREIBURG.dotx mit
+> DIN-Anschriftfeld und die passenden Textbausteine „Adresse" – nur nach Freigabe durch die Organisation
+> einspielen (siehe README dort).
+>
 > Lage und Aufbau von Anschriftfeld, Versandvermerk und Infoblock bestimmt das AnNoText-Adresslayout
 > (`.ADR`), nicht die DOTX. Die DIN-5008-Korrekturen am Anschriftfeld (siehe unten) müssen deshalb
 > im Adresslayout nachgezogen werden.
